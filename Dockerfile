@@ -29,10 +29,10 @@ COPY --from=stage1 /app/main .
 COPY --from=stage1 /app/config ./root/config
 
 # If you have to run in develop mode, copy the env file
-COPY --from=stage1 /app/.env.development ./
+# COPY --from=stage1 /app/.env.development ./
 
 # Expose port 8080
 EXPOSE 8080
 
 # Command to run the application
-CMD ["./main", "-e", "development"]
+CMD ["./main", "-e", "production"]
