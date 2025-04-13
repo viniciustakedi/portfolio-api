@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/signal"
 	"portfolio/api/config"
+	"portfolio/api/infra/db"
 	"portfolio/api/server"
 	"syscall"
 )
@@ -24,6 +25,12 @@ func main() {
 	}
 
 	config.Init(*environment)
+
+	if err := db.InitMongoDB(); err != nil {
+		log.Fatalf("Error to init mongodb client: ", err.Error())
+		os.Exit(1)
+	}
+
 	httpServer := server.Init(*environment)
 
 	fmt.Printf("Server started in %s mode and running on port %s\n", *environment, httpServer.Addr)
