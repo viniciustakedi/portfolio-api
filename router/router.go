@@ -16,6 +16,7 @@ func NewRouter(environment string) *gin.Engine {
 	api := router.Group("/api")
 	{
 		RegisterHealthRoutes(api)
+		RegisterJobsRoutes(api)
 	}
 
 	return router
