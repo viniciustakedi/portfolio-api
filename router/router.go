@@ -33,11 +33,8 @@ func NewRouter(environment string) *gin.Engine {
 	api := router.Group("/api")
 	{
 		RegisterHealthRoutes(api)
-<<<<<<< Updated upstream
-=======
 		RegisterJobsRoutes(api)
 		RegisterEmailsRoutes(api)
->>>>>>> Stashed changes
 	}
 
 	return router
