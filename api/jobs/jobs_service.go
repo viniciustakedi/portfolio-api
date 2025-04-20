@@ -2,7 +2,6 @@ package jobs
 
 import (
 	"context"
-	"portfolio/api/models"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -18,33 +17,33 @@ func NewJobsService(mongoDB *mongo.Database) *JobsService {
 	}
 }
 
-func (ctx *JobsService) GetAll() ([]models.JobsDB, error) {
-	jobColletion := ctx.mongoDB.Collection("job")
+func (ctx *JobsService) GetAll() ([]JobsDB, error) {
+	jobColletion := ctx.mongoDB.Collection("jobs")
 
 	ctxBg := context.Background()
 
 	jobsDb, err := jobColletion.Find(ctxBg, bson.M{})
 	if err != nil {
-		return []models.JobsDB{}, err
+		return []JobsDB{}, err
 	}
 	defer jobsDb.Close(ctxBg)
 
-	var jobs []models.JobsDB
+	var jobs []JobsDB
 	for jobsDb.Next(ctxBg) {
-		var job models.JobsDB
+		var job JobsDB
 		if err := jobsDb.Decode(&job); err != nil {
-			return []models.JobsDB{}, err
+			return []JobsDB{}, err
 		}
 
 		jobs = append(jobs, job)
 	}
 
 	if err := jobsDb.Err(); err != nil {
-		return []models.JobsDB{}, err
+		return []JobsDB{}, err
 	}
 
 	if jobs == nil {
-		jobs = []models.JobsDB{}
+		jobs = []JobsDB{}
 	}
 
 	return jobs, nil

@@ -1,6 +1,7 @@
 package jobs
 
 import (
+	"fmt"
 	"net/http"
 	response "portfolio/api/utils"
 
@@ -22,6 +23,7 @@ func NewJobsController(
 func (ctx *JobsController) GetAll(c *gin.Context) {
 	data, err := ctx.jobsService.GetAll()
 	if err != nil {
+		fmt.Println(err.Error())
 		response.Error(c, "Error to get jobs.")
 		return
 	}
