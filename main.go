@@ -13,7 +13,7 @@ import (
 )
 
 func main() {
-	environment := flag.String("env", "development", "Environment to run the application in (development, staging, production)")
+	environment := flag.String("e", "development", "Environment to run the application in (development, staging, production)")
 
 	flag.Usage = func() {
 		log.Fatalf(
@@ -23,6 +23,8 @@ func main() {
 
 		os.Exit(1)
 	}
+
+	flag.Parse()
 
 	config.Init(*environment)
 
