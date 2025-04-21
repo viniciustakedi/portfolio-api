@@ -8,11 +8,12 @@ type JobsContentDB struct {
 }
 
 type JobsDB struct {
-	Title       string        `json:"title" bson:"title"`
-	CompanyName string        `json:"companyName" bson:"companyName"`
-	Content     JobsContentDB `json:"content" bson:"content"`
-	Location    string        `json:"location" bson:"location"`
-	Stacks      []string      `json:"stacks" bson:"stacks"`
-	StartDate   time.Time     `json:"startDate" bson:"startDate"`
-	ExitDate    *time.Time    `json:"exitDate,omitempty" bson:"exitDate,omitempty"`
+	Title           string        `json:"title" bson:"title"`
+	CompanyName     string        `json:"companyName" bson:"companyName"`
+	CompanyImageURL string        `json:"companyImageUrl" bson:"companyImageUrl"`
+	Content         JobsContentDB `json:"content" bson:"content"`
+	Location        string        `json:"location" bson:"location"`
+	Stacks          []string      `json:"stacks" bson:"stacks"`
+	StartDate       time.Time     `json:"startDate" bson:"startDate"`
+	ExitDate        *time.Time    `json:"exitDate,omitempty" bson:"exitDate,omitempty"`
 }
