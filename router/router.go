@@ -1,7 +1,6 @@
 package router
 
 import (
-	"fmt"
 	"slices"
 
 	"github.com/gin-gonic/gin"
