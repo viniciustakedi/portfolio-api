@@ -20,9 +20,12 @@ func NewRouter(environment string) *gin.Engine {
 	router.Use(func(c *gin.Context) {
 		origin := c.GetHeader("Origin")
 		originsAllowed := []string{
-			"http://localhost:3000",
 			"https://takedi.com",
 			"https://my-portfolio-git-v2-viniciustakedis-projects.vercel.app",
+		}
+
+		if environment == "development" {
+			originsAllowed = append(originsAllowed, "http://localhost:3000")
 		}
 
 		if slices.Contains(originsAllowed, origin) {
