@@ -2,6 +2,7 @@ package router
 
 import (
 	"portfolio/api/api/emails"
+	"portfolio/api/middlewares"
 
 	"github.com/gin-gonic/gin"
 )
@@ -17,9 +18,9 @@ func RegisterEmailsRoutes(router *gin.RouterGroup) {
 	}{
 		{
 			method:      "POST",
-			route:       "/email/send",
-			handler:     emailsController.Send,
-			middlewares: []gin.HandlerFunc{},
+			route:       "/email/send/portfolio-message",
+			handler:     emailsController.SendPortfolioMessage,
+			middlewares: []gin.HandlerFunc{middlewares.PayloadValidator(&emails.SendPortfolioMessage{})},
 		},
 	}
 
