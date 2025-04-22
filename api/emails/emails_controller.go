@@ -1,6 +1,7 @@
 package emails
 
 import (
+	"fmt"
 	"net/http"
 	response "portfolio/api/utils"
 
@@ -19,9 +20,12 @@ func NewEmailsController(
 	}
 }
 
-func (ctx *EmailsController) Send(c *gin.Context) {
-	message, err := ctx.emailsService.Send()
+func (ctx *EmailsController) SendPortfolioMessage(c *gin.Context) {
+	data := c.MustGet("payload").(*SendPortfolioMessage)
+
+	message, err := ctx.emailsService.SendPortfolioMessage(*data)
 	if err != nil {
+		fmt.Println(err.Error())
 		response.Error(c, "Error to send email.")
 		return
 	}
