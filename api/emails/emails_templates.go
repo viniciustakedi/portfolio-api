@@ -15,9 +15,9 @@ func getPortfolioMessageHTML(data SendPortfolioMessage) string {
 func getPortfolioMessagePlainText(data SendPortfolioMessage) string {
 	plaintext := `🥳 New portfolio message! {{sender_name}} sent you a message! To reply {{sender_name}}, use your professional email contact@takedi.com and send a message to {{sender_email}}. Message: "{{sender_message}}" Click here to go to portfolio website: https://takedi.com --- This email was sent automatically to Vinicius Takedi. If you received this by mistake, please disregard it. Thank you very much!`
 
-	plaintext = strings.Replace(plaintext, "{{sender_name}}", data.Name, -1)
-	plaintext = strings.Replace(plaintext, "{{sender_email}}", data.Email, -1)
-	plaintext = strings.Replace(plaintext, "{{sender_message}}", data.Message, -1)
+	plaintext = strings.ReplaceAll(plaintext, "{{sender_name}}", data.Name)
+	plaintext = strings.ReplaceAll(plaintext, "{{sender_email}}", data.Email)
+	plaintext = strings.ReplaceAll(plaintext, "{{sender_message}}", data.Message)
 
 	return plaintext
 }
