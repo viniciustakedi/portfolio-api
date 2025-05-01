@@ -15,7 +15,7 @@ func NewRouter(environment string) *gin.Engine {
 
 	router.Use(gin.Logger())
 	router.Use(gin.Recovery())
-	router.SetTrustedProxies(nil) // Set trusted proxies to nil to disable proxy trust
+	router.SetTrustedProxies(nil)
 
 	router.Use(func(c *gin.Context) {
 		origin := c.GetHeader("Origin")
