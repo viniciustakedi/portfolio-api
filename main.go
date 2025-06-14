@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/signal"
 	"portfolio/api/config"
+	"portfolio/api/cron"
 	"portfolio/api/infra/db"
 	"portfolio/api/server"
 	"syscall"
@@ -32,6 +33,11 @@ func main() {
 		log.Fatalf("Error to init mongodb client: ", err.Error())
 		os.Exit(1)
 	}
+
+	// Initialize the cron jobs
+	// This will run the cron jobs in a separate goroutine
+	// and will not block the main thread.
+	cron.Init()
 
 	httpServer := server.Init(*environment)
 
