@@ -32,3 +32,13 @@ func (ctx *EmailsController) SendPortfolioMessage(c *gin.Context) {
 
 	response.Message(c, message, http.StatusOK)
 }
+
+func (ctx *EmailsController) SendDailyWordNewsletter() error {
+	err := ctx.emailsService.SendDailyWordNewsletter()
+	if err != nil {
+		fmt.Println(err.Error())
+		return err
+	}
+
+	return nil
+}
