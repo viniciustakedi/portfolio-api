@@ -15,6 +15,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 type EmailsService struct {
@@ -50,54 +51,99 @@ func (ctx *EmailsService) SendPortfolioMessage(data SendPortfolioMessage) (strin
 	return "Email sent successfully!", nil
 }
 
-func (ctx *EmailsService) SendDailyWordNewsletter() error {
-	ctxBg := context.Background()
-	newsletterTypeId, err := primitive.ObjectIDFromHex("684cd13895298f80e21813a9")
+func (svc *EmailsService) SendDailyWordNewsletter() error {
+	// 1 - Prepare context and IDs & Get word of the day
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+
+	newsletterTypeID, err := primitive.ObjectIDFromHex("684cd13895298f80e21813a9")
 	if err != nil {
-		return fmt.Errorf("invalid newsletterTypeId: %s", err.Error())
+		return fmt.Errorf("invalid newsletterTypeId: %w", err)
 	}
 
-	openAIApiKey := config.GetEnv("OPENAI_API_KEY")
-	if openAIApiKey == "" {
+	wordColl := svc.mongoDB.Collection("dailywordnewsletterwords")
+	filter := bson.M{"used": false}
+	update := bson.M{"$set": bson.M{"used": true}}
+	// return the *updated* document
+	opts := options.FindOneAndUpdate().
+		SetReturnDocument(options.After)
+
+	wordRes := wordColl.FindOneAndUpdate(ctx, filter, update, opts)
+	if err := wordRes.Err(); err != nil {
+		if err == mongo.ErrNoDocuments {
+			return fmt.Errorf("no unused words left")
+		}
+		return fmt.Errorf("findOneAndUpdate error: %w", err)
+	}
+
+	var word WordDB
+	if err := wordRes.Decode(&word); err != nil {
+		return fmt.Errorf("decoding word: %w", err)
+	}
+
+	// 2 - Load API keys
+	openAIKey := config.GetEnv("OPENAI_API_KEY")
+	if openAIKey == "" {
 		return errors.New("OPENAI_API_KEY not set")
 	}
-
-	client := openai.NewClient(openAIApiKey)
-
-	system := openai.ChatCompletionMessage{
-		Role:    openai.ChatMessageRoleSystem,
-		Content: "You are a dictionary assistant. Respond with JSON only, containing these fields: word (string), definition (string), usageTip (string), funFact (string), examples (array of strings), synonyms (array of strings), antonyms (array of strings).",
+	sendGridKey := config.GetEnv("SENDGRID_API_KEY")
+	if sendGridKey == "" {
+		return errors.New("SENDGRID_API_KEY not set")
 	}
 
-	user := openai.ChatCompletionMessage{
-		Role:    openai.ChatMessageRoleUser,
-		Content: "Provide detailed information for some random word that you want to give to me! Could be any kind of word but must be in English.",
-	}
-
-	resp, err := client.CreateChatCompletion(ctxBg, openai.ChatCompletionRequest{
-		Model:            openai.GPT4,
-		Messages:         []openai.ChatCompletionMessage{system, user},
+	// 3 - Build OpenAI request
+	client := openai.NewClient(openAIKey)
+	req := openai.ChatCompletionRequest{
+		Model: openai.GPT4,
+		Messages: []openai.ChatCompletionMessage{
+			{
+				Role:    openai.ChatMessageRoleSystem,
+				Content: `You are a dictionary assistant. Respond with JSON only, containing these fields: word (string), definition (string), usageTip (string), funFact (string), examples (array of strings), synonyms (array of strings), antonyms (array of strings).`,
+			},
+			{
+				Role:    openai.ChatMessageRoleUser,
+				Content: fmt.Sprintf("Provide detailed information for the word %s", word.Name),
+			},
+		},
 		Temperature:      0.9,
 		TopP:             0.9,
 		PresencePenalty:  0.6,
 		FrequencyPenalty: 0.6,
-	})
+	}
+
+	// 4 -  Call with retries on 5xx
+	var chatResp openai.ChatCompletionResponse
+	for attempt := 1; attempt <= 3; attempt++ {
+		chatResp, err = client.CreateChatCompletion(ctx, req)
+		if err == nil {
+			break
+		}
+		var apiErr *openai.APIError
+		if errors.As(err, &apiErr) && apiErr.HTTPStatusCode >= 500 && apiErr.HTTPStatusCode < 600 {
+			time.Sleep(time.Duration(attempt) * time.Second)
+			continue
+		}
+		return fmt.Errorf("OpenAI request error: %w", err)
+	}
 	if err != nil {
-		return fmt.Errorf("OpenAI request error: %s", err.Error())
+		return fmt.Errorf("OpenAI request failed after retries: %w", err)
 	}
 
+	// 5 -  Parse JSON safely
+	content := chatResp.Choices[0].Message.Content
 	var info WordInfo
-	if err := json.Unmarshal([]byte(resp.Choices[0].Message.Content), &info); err != nil {
-		return fmt.Errorf("JSON unmarshal error: %w\nresponse was: %s", err, resp.Choices[0].Message.Content)
+	if err := json.Unmarshal([]byte(content), &info); err != nil {
+		return fmt.Errorf("invalid JSON in OpenAI response: %w\nraw: %s", err, content)
 	}
 
+	// Capitalize the word
 	info.Word = strings.ToUpper(info.Word[:1]) + info.Word[1:]
 
-	dailyWordNewsletterCollection := ctx.mongoDB.Collection("dailywordnewsletter")
-
+	// 6 - Insert into MongoDB
+	coll := svc.mongoDB.Collection("dailywordnewsletter")
 	now := time.Now()
 	doc := bson.M{
-		"newsletterTypeId": newsletterTypeId,
+		"newsletterTypeId": newsletterTypeID,
 		"word":             info.Word,
 		"definition":       info.Definition,
 		"usageTip":         info.UsageTip,
@@ -108,94 +154,59 @@ func (ctx *EmailsService) SendDailyWordNewsletter() error {
 		"createdAt":        now,
 		"sentAt":           nil,
 	}
-	insertRes, err := dailyWordNewsletterCollection.InsertOne(ctxBg, doc)
+	res, err := coll.InsertOne(ctx, doc)
 	if err != nil {
 		return fmt.Errorf("insert newsletter: %w", err)
 	}
+	newsletterID := res.InsertedID.(primitive.ObjectID)
 
-	newsletterId := insertRes.InsertedID.(primitive.ObjectID)
-	fmt.Println(newsletterId)
-
-	recipientsCollection := ctx.mongoDB.Collection("recipients")
-
-	filter := bson.M{"newsletterTypeId": newsletterTypeId}
-	recipientsDb, err := recipientsCollection.Find(ctxBg, filter)
+	// 7 - Load recipients
+	recColl := svc.mongoDB.Collection("recipients")
+	cursor, err := recColl.Find(ctx, bson.M{"newsletterTypeId": newsletterTypeID})
 	if err != nil {
-		return err
+		return fmt.Errorf("finding recipients: %w", err)
 	}
-	defer recipientsDb.Close(ctxBg)
+	defer cursor.Close(ctx)
 
-	var recipients []RecipientsDB
-	if err := recipientsDb.All(ctxBg, &recipients); err != nil {
+	var recipients []struct {
+		ID    primitive.ObjectID `bson:"_id"`
+		Name  string             `bson:"name"`
+		Email string             `bson:"email"`
+	}
+	if err := cursor.All(ctx, &recipients); err != nil {
 		return fmt.Errorf("decoding recipients: %w", err)
 	}
 
-	sendGridApiKey := config.GetEnv("SENDGRID_API_KEY")
-	if sendGridApiKey == "" {
-		return fmt.Errorf("SENDGRID_API_KEY is not set")
-	}
-
-	sendGridClient := sendgrid.NewSendClient(sendGridApiKey)
-
+	// 8 - Build and send via SendGrid
+	sgClient := sendgrid.NewSendClient(sendGridKey)
 	from := mail.NewEmail("English Daily Pill", "no.reply@takedi.com")
 	subject := fmt.Sprintf("English Daily Pill — %s", info.Word)
 
 	m := mail.NewV3Mail()
 	m.SetFrom(from)
 	m.Subject = subject
-
 	m.AddContent(mail.NewContent("text/plain", getDailyWordNewsletterPlainText(info)))
 	m.AddContent(mail.NewContent("text/html", getDailyWordNewsletterHTML(info)))
 
 	for _, r := range recipients {
 		p := mail.NewPersonalization()
 		p.AddTos(mail.NewEmail(r.Name, r.Email))
-
-		// If you need per-user unsubscribe/preference links, you must use a Dynamic Template
-		// or SendGrid’s Subscription Tracking feature. For a quick example of subscription
-		// tracking (no per-user links) you could do:
-		//
-		// mailSettings := mail.NewMailSettings()
-		// subTrack := mail.NewSubscriptionTracking()
-		// subTrack.SetEnable(true)
-		// subTrack.SetText("Unsubscribe")
-		// mailSettings.SetSubscriptionTracking(subTrack)
-		// m.SetMailSettings(mailSettings)
-		//
-		// Otherwise, switch to a Dynamic Template on SendGrid, and do:
-		//
-		//    m.SetTemplateID("d-your-template-id")
-		//    p.SetDynamicTemplateData("word",             info.Word)
-		//    p.SetDynamicTemplateData("definition",       info.Definition)
-		//    p.SetDynamicTemplateData("funFact",          info.FunFact)
-		//    p.SetDynamicTemplateData("examples",         info.Examples)
-		//    p.SetDynamicTemplateData("synonyms",         info.Synonyms)
-		//    p.SetDynamicTemplateData("antonyms",         info.Antonyms)
-		//    p.SetDynamicTemplateData("usageTip",         info.UsageTip)
-		//    p.SetDynamicTemplateData("unsubscribe_link", fmt.Sprintf("https://…/unsub?uid=%s", r.ID.Hex()))
-		//    p.SetDynamicTemplateData("preferences_link", fmt.Sprintf("https://…/prefs?uid=%s", r.ID.Hex()))
-
 		m.AddPersonalizations(p)
 	}
 
-	respSendGrid, err := sendGridClient.Send(m)
+	respSG, err := sgClient.Send(m)
 	if err != nil {
-		return fmt.Errorf("batch send error: %w", err)
+		return fmt.Errorf("SendGrid error: %w", err)
 	}
-	if respSendGrid.StatusCode >= 400 {
-		return fmt.Errorf("batch send failed: %s", respSendGrid.Body)
-	}
-
-	now = time.Now()
-	update := bson.M{
-		"$set": bson.M{
-			"sentAt": now,
-		},
+	if respSG.StatusCode >= 400 {
+		return fmt.Errorf("SendGrid API error: %s", respSG.Body)
 	}
 
-	_, err = dailyWordNewsletterCollection.UpdateByID(ctxBg, newsletterId, update)
+	// 9 - Mark as sent
+	_, err = coll.UpdateByID(ctx, newsletterID, bson.M{"$set": bson.M{"sentAt": time.Now()}})
 	if err != nil {
 		return fmt.Errorf("update newsletter: %w", err)
 	}
+
 	return nil
 }
