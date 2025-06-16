@@ -35,3 +35,9 @@ type RecipientsDB struct {
 	SubscribedAt     time.Time          `bson:"subscribedAt" json:"subscribedAt"`
 	NewsletterTypeId primitive.ObjectID `bson:"newsletterTypeId" json:"newsletterTypeId"`
 }
+
+type WordDB struct {
+	ID   primitive.ObjectID `bson:"_id"`
+	Name string             `bson:"name"`
+	Used bool               `bson:"used"`
+}
