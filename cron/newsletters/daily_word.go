@@ -24,6 +24,7 @@ func SendDailyWord() {
 		cron.WithLocation(loc),
 	)
 
+	// TODO: Get schedule time from Database
 	// Schedule at 07:07:00 every day
 	spec := "0 7 7 * * *"
 	_, err = c.AddFunc(spec, func() {
@@ -32,7 +33,7 @@ func SendDailyWord() {
 			fmt.Println(now, "- Error sending daily English word:", err)
 			return
 		}
-		fmt.Println(now, "- OK, sent!")
+		fmt.Println(now, "- OK, Daily word sent !")
 	})
 	if err != nil {
 		panic(fmt.Sprintf("scheduling daily word newsletter: %v", err))
