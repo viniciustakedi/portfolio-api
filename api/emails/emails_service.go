@@ -162,7 +162,10 @@ func (svc *EmailsService) SendDailyWordNewsletter() error {
 
 	// 7 - Load recipients
 	recColl := svc.mongoDB.Collection("recipients")
-	cursor, err := recColl.Find(ctx, bson.M{"newsletterTypeId": newsletterTypeID})
+	cursor, err := recColl.Find(ctx, bson.M{
+		"newsletterTypeId": newsletterTypeID,
+		"subscribed":       true,
+	})
 	if err != nil {
 		return fmt.Errorf("finding recipients: %w", err)
 	}
@@ -177,10 +180,14 @@ func (svc *EmailsService) SendDailyWordNewsletter() error {
 		return fmt.Errorf("decoding recipients: %w", err)
 	}
 
+	if len(recipients) == 0 {
+		return fmt.Errorf("no recipients was found")
+	}
+
 	// 8 - Build and send via SendGrid
 	sgClient := sendgrid.NewSendClient(sendGridKey)
-	from := mail.NewEmail("English Daily Pill", "no.reply@takedi.com")
-	subject := fmt.Sprintf("English Daily Pill — %s", info.Word)
+	from := mail.NewEmail("Learn with Cacau", "no.reply@takedi.com")
+	subject := fmt.Sprintf("Learn with Cacau — %s", info.Word)
 
 	m := mail.NewV3Mail()
 	m.SetFrom(from)
