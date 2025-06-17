@@ -186,7 +186,7 @@ func (svc *EmailsService) SendDailyWordNewsletter() error {
 
 	// 8 - Build and send via SendGrid
 	sgClient := sendgrid.NewSendClient(sendGridKey)
-	from := mail.NewEmail("Learn with Cacau", "no.reply@takedi.com")
+	from := mail.NewEmail("Cacau says whoooof!", "no.reply@takedi.com")
 	subject := fmt.Sprintf("Learn with Cacau — %s", info.Word)
 
 	m := mail.NewV3Mail()
