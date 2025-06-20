@@ -8,7 +8,7 @@ import (
 	"github.com/robfig/cron/v3"
 )
 
-func SendDailyWord() {
+func SendDailyPhrasalVerb() {
 	// Determine GMT-3 (São Paulo) location
 	loc, err := time.LoadLocation("America/Sao_Paulo")
 	if err != nil {
@@ -27,24 +27,24 @@ func SendDailyWord() {
 	// TODO: Get schedule time from Database
 	// Schedule at 07:07:00 every day
 	spec := "0 7 7 * * *"
-	_, err = c.AddFunc(spec, func() {
+	id, err := c.AddFunc(spec, func() {
 		weekday := time.Now().In(loc).Weekday()
-		if weekday != time.Monday && weekday != time.Wednesday && weekday != time.Friday && weekday != time.Sunday {
+		if weekday != time.Tuesday && weekday != time.Thursday && weekday != time.Saturday {
 			return
 		}
 
 		now := time.Now().In(loc).Format("2006-01-02T15:04:05")
-		if err := emailsController.SendDailyWordNewsletter(); err != nil {
-			fmt.Println(now, "- Error sending daily English word:", err)
+		if err := emailsController.SendDailyPhrasalVerbNewsletter(); err != nil {
+			fmt.Println(now, "- Error sending daily English word - Phasal Verb Edition:", err)
 			return
 		}
 		fmt.Println(now, "- OK, Daily word sent !")
 	})
 	if err != nil {
-		panic(fmt.Sprintf("scheduling daily word newsletter: %v", err))
+		panic(fmt.Sprintf("scheduling daily word newsletter - Phrasal verb edition: %v", err))
 	}
 
-	// c.Entry(id).Job.Run()
+	c.Entry(id).Job.Run()
 
 	go c.Start()
 }

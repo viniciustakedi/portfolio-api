@@ -4,5 +4,6 @@ import newslettercron "portfolio/api/cron/newsletters"
 
 func Init() {
 	newslettercron.SendDailyWord()
+	newslettercron.SendDailyPhrasalVerb()
 	// Add more cron jobs here as needed
 }
