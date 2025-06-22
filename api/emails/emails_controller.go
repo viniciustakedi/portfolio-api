@@ -42,3 +42,13 @@ func (ctx *EmailsController) SendDailyWordNewsletter() error {
 
 	return nil
 }
+
+func (ctx *EmailsController) SendDailyPhrasalVerbNewsletter() error {
+	err := ctx.emailsService.SendDailyPhrasalVerbNewsletter()
+	if err != nil {
+		fmt.Println(err.Error())
+		return err
+	}
+
+	return nil
+}
