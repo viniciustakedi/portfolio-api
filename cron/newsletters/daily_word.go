@@ -31,9 +31,17 @@ func SendDailyWord() {
 		time.Sunday:    true,
 	}
 
-	// TODO: Get schedule time from Database
-	// Schedule at 07:07:00 every day
-	spec := "0 7 7 * * *"
+	spec, err := emailsController.GetNewsletterScheduleTime("684cd13895298f80e21813a9")
+	if err != nil {
+		panic(fmt.Sprintf("Erro to get schedule for learn with cacau - word mode: %v", err))
+	}
+
+	fmt.Println(
+		time.Now().In(loc).Format("2006-01-02T15:04:05"),
+		"- Cron to send the daily English word - Word Edition",
+		fmt.Sprintf(" - Scheduled to %s", spec),
+	)
+
 	_, err = c.AddFunc(spec, func() {
 		weekday := time.Now().In(loc).Weekday()
 
@@ -53,6 +61,5 @@ func SendDailyWord() {
 	}
 
 	// c.Entry(id).Job.Run()
-
 	go c.Start()
 }

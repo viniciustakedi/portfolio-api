@@ -33,6 +33,15 @@ func (ctx *EmailsController) SendPortfolioMessage(c *gin.Context) {
 	response.Message(c, message, http.StatusOK)
 }
 
+func (ctx *EmailsController) GetNewsletterScheduleTime(newsletterId string) (string, error) {
+	time, err := ctx.emailsService.GetNewsletterScheduleTime(newsletterId)
+	if err != nil {
+		return "", err
+	}
+
+	return time, nil
+}
+
 func (ctx *EmailsController) SendDailyWordNewsletter() error {
 	err := ctx.emailsService.SendDailyWordNewsletter()
 	if err != nil {
