@@ -51,6 +51,40 @@ func (ctx *EmailsService) SendPortfolioMessage(data SendPortfolioMessage) (strin
 	return "Email sent successfully!", nil
 }
 
+func (svc *EmailsService) GetNewsletterScheduleTime(newsletterId string) (string, error) {
+	objectId, err := primitive.ObjectIDFromHex(newsletterId)
+	if err != nil {
+		return "", fmt.Errorf("invalid newsletterId: %w", err)
+	}
+
+	ctx := context.Background()
+
+	newsletterColl := svc.mongoDB.Collection("newsletters")
+	newsletterDb, err := newsletterColl.Find(ctx, bson.M{
+		"_id": objectId,
+	})
+	if err != nil {
+		return "", fmt.Errorf("finding newsletter: %w", err)
+	}
+	defer newsletterDb.Close(ctx)
+
+	var newsletter struct {
+		ID       primitive.ObjectID `bson:"_id"`
+		Name     string             `bson:"name"`
+		Schedule string             `bson:"schedule"`
+	}
+
+	if !newsletterDb.Next(ctx) {
+		return "", fmt.Errorf("newsletter not found")
+	}
+
+	if err := newsletterDb.Decode(&newsletter); err != nil {
+		return "", fmt.Errorf("decoding newsletter: %w", err)
+	}
+
+	return newsletter.Schedule, nil
+}
+
 func (svc *EmailsService) SendDailyWordNewsletter() error {
 	// 1 - Prepare context and IDs & Get word of the day
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
