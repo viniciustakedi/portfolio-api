@@ -15,7 +15,7 @@ func SendDailyWord() {
 		loc = time.FixedZone("GMT-3", -3*3600)
 	}
 
-	fmt.Println(time.Now().In(loc).Format("2006-01-02T15:04:05"), "- Cron to send the daily English word")
+	fmt.Println(time.Now().In(loc).Format("2006-01-02T15:04:05"), "- Cron to send the daily English word - Word Edition")
 	emailsController := emails.MakeEmailsController()
 
 	// Create a cron with seconds and the right TZ
@@ -24,12 +24,20 @@ func SendDailyWord() {
 		cron.WithLocation(loc),
 	)
 
+	allowedWeekdays := map[time.Weekday]bool{
+		time.Monday:    true,
+		time.Wednesday: true,
+		time.Friday:    true,
+		time.Sunday:    true,
+	}
+
 	// TODO: Get schedule time from Database
 	// Schedule at 07:07:00 every day
 	spec := "0 7 7 * * *"
 	_, err = c.AddFunc(spec, func() {
 		weekday := time.Now().In(loc).Weekday()
-		if weekday != time.Monday && weekday != time.Wednesday && weekday != time.Friday && weekday != time.Sunday {
+
+		if !allowedWeekdays[weekday] {
 			return
 		}
 

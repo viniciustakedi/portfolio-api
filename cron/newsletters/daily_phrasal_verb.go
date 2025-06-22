@@ -15,7 +15,7 @@ func SendDailyPhrasalVerb() {
 		loc = time.FixedZone("GMT-3", -3*3600)
 	}
 
-	fmt.Println(time.Now().In(loc).Format("2006-01-02T15:04:05"), "- Cron to send the daily English word")
+	fmt.Println(time.Now().In(loc).Format("2006-01-02T15:04:05"), "- Cron to send the daily English word - Phrasal Verb Edition")
 	emailsController := emails.MakeEmailsController()
 
 	// Create a cron with seconds and the right TZ
@@ -24,12 +24,19 @@ func SendDailyPhrasalVerb() {
 		cron.WithLocation(loc),
 	)
 
+	allowedWeekdays := map[time.Weekday]bool{
+		time.Tuesday:  true,
+		time.Thursday: true,
+		time.Saturday: true,
+	}
+
 	// TODO: Get schedule time from Database
 	// Schedule at 07:07:00 every day
 	spec := "0 7 7 * * *"
 	id, err := c.AddFunc(spec, func() {
 		weekday := time.Now().In(loc).Weekday()
-		if weekday != time.Tuesday && weekday != time.Thursday && weekday != time.Saturday {
+
+		if !allowedWeekdays[weekday] {
 			return
 		}
 
@@ -41,7 +48,7 @@ func SendDailyPhrasalVerb() {
 		fmt.Println(now, "- OK, Daily word sent !")
 	})
 	if err != nil {
-		panic(fmt.Sprintf("scheduling daily word newsletter - Phrasal verb edition: %v", err))
+		panic(fmt.Sprintf("scheduling learn with Cacau newsletter - Phrasal verb edition: %v", err))
 	}
 
 	c.Entry(id).Job.Run()
