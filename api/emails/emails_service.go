@@ -85,6 +85,18 @@ func (svc *EmailsService) GetNewsletterScheduleTime(newsletterId string) (string
 	return newsletter.Schedule, nil
 }
 
+func (svc *EmailsService) IsNewsletterActive(id primitive.ObjectID) bool {
+	newsletterColl := svc.mongoDB.Collection("newsletters")
+	filter := bson.M{"_id": id, "active": true}
+
+	mongoResponse := newsletterColl.FindOne(context.Background(), filter)
+	if mongoResponse.Err() == mongo.ErrNoDocuments {
+		return false
+	}
+
+	return mongoResponse.Err() == nil
+}
+
 func (svc *EmailsService) SendDailyWordNewsletter() error {
 	// 1 - Prepare context and IDs & Get word of the day
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
@@ -93,6 +105,11 @@ func (svc *EmailsService) SendDailyWordNewsletter() error {
 	newsletterTypeID, err := primitive.ObjectIDFromHex("684cd13895298f80e21813a9")
 	if err != nil {
 		return fmt.Errorf("invalid newsletterTypeId: %w", err)
+	}
+
+	isNewsletterActive := svc.IsNewsletterActive(newsletterTypeID)
+	if !isNewsletterActive {
+		return fmt.Errorf("newsletter is not active")
 	}
 
 	wordColl := svc.mongoDB.Collection("dailywordnewsletterwords")
@@ -260,6 +277,11 @@ func (svc *EmailsService) SendDailyPhrasalVerbNewsletter() error {
 	newsletterTypeID, err := primitive.ObjectIDFromHex("684cd13895298f80e21813a9")
 	if err != nil {
 		return fmt.Errorf("invalid newsletterTypeId: %w", err)
+	}
+
+	isNewsletterActive := svc.IsNewsletterActive(newsletterTypeID)
+	if !isNewsletterActive {
+		return fmt.Errorf("newsletter is not active")
 	}
 
 	phrasalVerbColl := svc.mongoDB.Collection("dailywordnewsletterphrasalverbs")
