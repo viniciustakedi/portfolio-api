@@ -30,9 +30,11 @@ func main() {
 	config.Init(*environment)
 
 	if err := db.InitMongoDB(); err != nil {
-		log.Fatalf("Error to init mongodb client: ", err.Error())
+		log.Fatalf("error to init mongodb client: %s", err.Error())
 		os.Exit(1)
 	}
+
+	defer db.KillMongoDB()
 
 	// Initialize the cron jobs
 	// This will run the cron jobs in a separate goroutine
