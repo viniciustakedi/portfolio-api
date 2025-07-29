@@ -22,6 +22,7 @@ func NewRouter(environment string) *gin.Engine {
 
 		originsAllowed := []string{
 			"https://takedi.com",
+			"https://www.takedi.com",
 			"https://my-portfolio-git-v2-viniciustakedis-projects.vercel.app",
 		}
 
