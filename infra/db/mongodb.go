@@ -36,6 +36,19 @@ func InitMongoDB() error {
 	return nil
 }
 
+func KillMongoDB() error {
+	if database.Client() == nil {
+		return fmt.Errorf("mongodb client didn't initialized")
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	if err := database.Client().Disconnect(ctx); err != nil {
+		return fmt.Errorf("disconnect mongodb: %w", err)
+	}
+	return nil
+}
+
 func GetMongoDB() *mongo.Database {
 	return database
 }

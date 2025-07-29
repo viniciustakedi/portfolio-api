@@ -26,6 +26,7 @@ func (ctx *JobsService) GetAll() ([]JobsDB, error) {
 	if err != nil {
 		return []JobsDB{}, err
 	}
+
 	defer jobsDb.Close(ctxBg)
 
 	var jobs []JobsDB
