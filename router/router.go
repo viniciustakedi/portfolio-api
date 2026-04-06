@@ -33,7 +33,7 @@ func NewRouter(environment string) *gin.Engine {
 		if slices.Contains(originsAllowed, origin) {
 			c.Header("Access-Control-Allow-Origin", origin)
 			c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-			c.Header("Access-Control-Allow-Headers", "Content-Type, Authorization")
+			c.Header("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Admin-Key")
 			if c.Request.Method == "OPTIONS" {
 				c.AbortWithStatus(204)
 				return
@@ -50,6 +50,7 @@ func NewRouter(environment string) *gin.Engine {
 		RegisterHealthRoutes(api)
 		RegisterJobsRoutes(api)
 		RegisterEmailsRoutes(api)
+		RegisterFlashcardsRoutes(api)
 	}
 
 	return router
