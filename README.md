@@ -81,6 +81,32 @@ The API will be available at `http://localhost:8080/api`.
 
 *Additional endpoints for experiences, skills, and contacts are available.*
 
+### Flashcards
+
+- `GET /api/flashcards?language=en|es&path=beginner|intermediate|advanced&limit=&skip=` – List cards (paginated)
+- `GET /api/flashcards/paths?language=en|es` – Learning paths for a language
+- `GET /api/flashcards/:id` – Single card
+
+### API admin — Flashcards
+
+Some flashcard routes are **admin-only**: creating and deleting cards. They are not tied to user login; the API uses a **shared secret** so only you (or trusted tooling) can mutate vocabulary data.
+
+| Item | Purpose |
+|------|--------|
+| **`FLASHCARDS_ADMIN_KEY`** (environment variable) | Secret value stored on the server. If it is empty, `POST` and `DELETE` flashcard routes respond with **503** (“not configured”). |
+| **`X-Admin-Key`** (HTTP request header) | On each admin request, the client must send this header with the **same value** as `FLASHCARDS_ADMIN_KEY`. If it is missing or wrong, the API responds with **401**. |
+
+**Example** (create a card with `curl`):
+
+```bash
+curl -X POST http://localhost:8080/api/flashcards \
+  -H "Content-Type: application/json" \
+  -H "X-Admin-Key: YOUR_SECRET_FROM_ENV" \
+  -d '{"word":"example","translation":"ejemplo","type":"noun","language":"en","path":"beginner","difficulty":2,"description":"A sample.","examples":["An example sentence."]}'
+```
+
+CORS is configured to allow the `X-Admin-Key` header from allowed origins, so a browser-based admin tool can call the API when the origin is permitted.
+
 ## 🤝 Contributing
 
 Contributions are welcome! Please open an issue or submit a pull request for any enhancements or bug fixes.
