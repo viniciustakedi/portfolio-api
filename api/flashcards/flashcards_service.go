@@ -70,6 +70,9 @@ func (s *FlashcardsService) List(ctx context.Context, language, path string, lim
 	if out == nil {
 		out = []FlashcardDocument{}
 	}
+	for i := range out {
+		out[i].NormalizeSynonyms()
+	}
 	return out, nil
 }
 
@@ -92,6 +95,7 @@ func (s *FlashcardsService) GetByID(ctx context.Context, id string) (*FlashcardD
 	if err != nil {
 		return nil, err
 	}
+	doc.NormalizeSynonyms()
 	return &doc, nil
 }
 
@@ -145,7 +149,7 @@ func (s *FlashcardsService) Create(ctx context.Context, p *CreateFlashcardPayloa
 	doc := FlashcardDocument{
 		ID:          primitive.NewObjectID(),
 		Word:        p.Word,
-		Translation: p.Translation,
+		Synonyms:    p.Synonyms,
 		Type:        p.Type,
 		Language:    p.Language,
 		Path:        p.Path,

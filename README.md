@@ -102,7 +102,7 @@ Some flashcard routes are **admin-only**: creating and deleting cards. They are 
 curl -X POST http://localhost:8080/api/flashcards \
   -H "Content-Type: application/json" \
   -H "X-Admin-Key: YOUR_SECRET_FROM_ENV" \
-  -d '{"word":"example","translation":"ejemplo","type":"noun","language":"en","path":"beginner","difficulty":2,"description":"A sample.","examples":["An example sentence."]}'
+  -d '{"word":"example","synonyms":["instance","case","illustration"],"type":"noun","language":"en","path":"beginner","difficulty":2,"description":"A sample.","examples":["An example sentence."]}'
 ```
 
 CORS is configured to allow the `X-Admin-Key` header from allowed origins, so a browser-based admin tool can call the API when the origin is permitted.
@@ -117,7 +117,7 @@ This section is for you (or another developer, or an LLM-assisted workflow) to *
 
 | Collection | Purpose |
 |------------|---------|
-| **`flashcards`** | Individual study cards (word, translation, examples, etc.). |
+| **`flashcards`** | Individual study cards (word, synonyms, description, examples, etc.). |
 | **`flashcard_paths`** | Metadata for each **language + level** row shown on the path map (title, description, order, icon). |
 
 Indexes are created automatically on API startup (compound index on `language` + `path` + `difficulty`, text index on `word` + `description`).
@@ -129,7 +129,7 @@ Fields the API expects (aligned with `POST /api/flashcards`):
 | Field | Type | Rules |
 |-------|------|--------|
 | `word` | string | Required. The term or phrase on the front of the card. |
-| `translation` | string | Required. Short gloss (can include notes, e.g. “NOT …”). |
+| `synonyms` | string[] | Required. **At least one** short synonym or related word/phrase in the **target language** (or English glosses for Spanish headwords). Avoid a single L1 gloss for one country—keep it useful for any learner. |
 | `type` | string | One of: `verb`, `noun`, `adjective`, `adverb`, `phrasal_verb`, `expression`. |
 | `language` | string | `en` or `es`. |
 | `path` | string | `beginner`, `intermediate`, or `advanced` (must match a path **level** for that language). |
@@ -139,6 +139,8 @@ Fields the API expects (aligned with `POST /api/flashcards`):
 | `tags` | string[] | **Optional.** Free-form labels (e.g. `daily-use`, `false-friend`, `travel`). Omit or use `[]` if none. |
 
 `createdAt` / `updatedAt` are set by the server on create.
+
+**Legacy BSON:** Older documents may still have a `translation` string instead of `synonyms`. The API reads that field only from the database and, when `synonyms` is empty, **copies it into `synonyms` as a single-item array** for JSON responses. New writes use `synonyms` only.
 
 ### Path document shape (`flashcard_paths`)
 
@@ -174,7 +176,7 @@ curl -X POST http://localhost:8080/api/flashcards \
   -H "X-Admin-Key: YOUR_SECRET" \
   -d '{
     "word": "carry on",
-    "translation": "continuar / seguir em frente",
+    "synonyms": ["continue", "keep going", "persist"],
     "type": "phrasal_verb",
     "language": "en",
     "path": "intermediate",
@@ -190,7 +192,7 @@ curl -X POST http://localhost:8080/api/flashcards \
 
 **Option B — Code + seed**
 
-Add entries in **`api/flashcards/seed_data.go`** (e.g. `enIntermediate()`, `esBeginner()`, …) using the same shape as existing `mkCard(...)` calls, then run:
+Add entries in **`api/flashcards/seed_data.go`** (e.g. `enIntermediate()`, `esBeginner()`, …) using `mkCard(lang, path, difficulty, word, type, description, synonyms, tags, examples)`, then run:
 
 ```bash
 go run ./cmd/seed-flashcards -e development -force
@@ -212,13 +214,13 @@ curl -X DELETE http://localhost:8080/api/flashcards/CARD_OBJECT_ID_HEX \
 ### Using an LLM to bulk-generate cards
 
 1. Share this README section (or the **Card document shape** table) as context.
-2. Ask for **valid JSON only**: an array of objects, each object having exactly the POST fields (`word`, `translation`, `type`, `language`, `path`, `difficulty`, `description`, `examples`, and optionally `tags`).
+2. Ask for **valid JSON only**: an array of objects, each object having exactly the POST fields (`word`, `synonyms`, `type`, `language`, `path`, `difficulty`, `description`, `examples`, and optionally `tags`).
 3. Validate enums: `type`, `language`, `path` must match the allowed values above; `examples` must be a non-empty array of strings.
 4. Pipe each object to `curl` or a small script that calls `POST /api/flashcards` with `X-Admin-Key`.
 
 Example prompt fragment for an LLM:
 
-> Generate 10 JSON objects for English beginner phrasal verbs. Each object: word, translation (Portuguese gloss OK), type `phrasal_verb`, language `en`, path `beginner`, difficulty 1–5, description, examples (array of 2 strings), tags (array, e.g. `["travel"]`). Output a single JSON array, no markdown.
+> Generate 10 JSON objects for English beginner phrasal verbs. Each object: word, synonyms (array of 2–4 English near-synonyms or related verbs—no single Portuguese gloss), type `phrasal_verb`, language `en`, path `beginner`, difficulty 1–5, description, examples (array of 2 strings), tags (array, e.g. `["travel"]`). Output a single JSON array, no markdown.
 
 ### Quick reference — allowed values
 
